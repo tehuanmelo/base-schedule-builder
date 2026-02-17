@@ -32,7 +32,7 @@ const CoachBaseForm = ({
         </label>
         <Select value={selectedCoach} onValueChange={onCoachChange}>
           <SelectTrigger className={coachError ? "border-destructive" : ""}>
-            <SelectValue placeholder="Select a coach" />
+            <SelectValue placeholder="Select you ps and name" />
           </SelectTrigger>
           <SelectContent>
             {COACHES.map((c) => (
@@ -53,7 +53,7 @@ const CoachBaseForm = ({
         </label>
         <Select value={selectedBase} onValueChange={onBaseChange}>
           <SelectTrigger className={baseError ? "border-destructive" : ""}>
-            <SelectValue placeholder="Select a base" />
+            <SelectValue placeholder="Select your base" />
           </SelectTrigger>
           <SelectContent>
             {BASES.map((b) => (
