@@ -163,11 +163,11 @@ const Index = () => {
       bodyLength: payloadText.length,
     };
 
+    console.log(payload)
+
     try {
       const res = await fetch(url, {
         method: "POST",
-        mode: "cors",
-        redirect: "follow",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: payloadText,
       });
