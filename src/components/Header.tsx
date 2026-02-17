@@ -22,7 +22,7 @@ const Header = () => {
         )}
         <div>
           <h1 className="text-lg font-bold text-foreground leading-tight">
-            National Guard Base Class Schedule
+            National Guard Class Schedule
           </h1>
           <p className="text-sm text-muted-foreground">Weekly schedule submission</p>
         </div>
