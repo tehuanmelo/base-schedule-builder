@@ -6,7 +6,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
     const timeFix =
       type === "time"
-        ? "block appearance-none [&::-webkit-date-and-time-value]:text-left [&::-webkit-date-and-time-value]:p-0 [&::-webkit-datetime-edit]:p-0"
+        ? "flex appearance-none [&::-webkit-date-and-time-value]:text-left [&::-webkit-date-and-time-value]:p-0 [&::-webkit-datetime-edit]:p-0"
         : "";
 
     return (

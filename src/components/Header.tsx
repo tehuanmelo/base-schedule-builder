@@ -6,7 +6,7 @@ const Header = () => {
   const [imgError, setImgError] = useState(false);
 
   return (
-    <header className="bg-card border-b border-border px-4 py-4">
+    <header className="sticky top-0 z-50 bg-card border-b border-border px-4 py-4">
       <div className="max-w-3xl mx-auto flex items-center gap-3">
         {!imgError ? (
           <img
