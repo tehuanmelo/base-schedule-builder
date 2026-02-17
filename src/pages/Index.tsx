@@ -28,6 +28,9 @@ const Index = () => {
   const [schedule, setSchedule] = useState<Record<DayOfWeek, DaySchedule>>(createEmptySchedule);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [globalError, setGlobalError] = useState("");
+  const [noScheduleError, setNoScheduleError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const updateDay = useCallback((day: DayOfWeek, daySchedule: DaySchedule) => {
     setSchedule((prev) => ({ ...prev, [day]: daySchedule }));
@@ -36,6 +39,7 @@ const Index = () => {
       delete next[day];
       return next;
     });
+    setNoScheduleError("");
   }, []);
 
   const repeatDay = useCallback(
@@ -48,6 +52,7 @@ const Index = () => {
         });
         return next;
       });
+      setNoScheduleError("");
     },
     []
   );
@@ -61,6 +66,8 @@ const Index = () => {
     if (!selectedBase) {
       newErrors.base = ["Please select a base"];
     }
+
+    const hasAnyClass = DAYS_OF_WEEK.some((day) => schedule[day].classes > 0);
 
     DAYS_OF_WEEK.forEach((day) => {
       const ds = schedule[day];
@@ -78,12 +85,19 @@ const Index = () => {
     });
 
     setErrors(newErrors);
-    const hasErrors = Object.keys(newErrors).length > 0;
+
+    if (!hasAnyClass) {
+      setNoScheduleError("You must add at least one class in the week before submitting.");
+    } else {
+      setNoScheduleError("");
+    }
+
+    const hasErrors = Object.keys(newErrors).length > 0 || !hasAnyClass;
     setGlobalError(hasErrors ? "Please fix the highlighted fields." : "");
     return !hasErrors;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) return;
 
     const coach = COACHES.find((c) => c.ps === selectedCoach)!;
@@ -95,8 +109,37 @@ const Index = () => {
     };
 
     console.log(payload);
-    saveSubmission(payload);
-    navigate("/success");
+    setSubmitting(true);
+    setSubmitError("");
+
+    const url = import.meta.env.VITE_APPSCRIPT_URL;
+
+    if (!url) {
+      // Test mode: no URL configured
+      saveSubmission(payload);
+      setSubmitting(false);
+      navigate("/success");
+      return;
+    }
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        throw new Error("Response not OK");
+      }
+
+      saveSubmission(payload);
+      navigate("/success");
+    } catch {
+      setSubmitError("Submission failed. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -119,7 +162,9 @@ const Index = () => {
         />
 
         <div>
-          <h2 className="text-base font-semibold text-foreground mb-3">Weekly Schedule</h2>
+          <h2 className={`text-base font-semibold mb-3 ${noScheduleError ? "text-destructive" : "text-foreground"}`}>
+            Weekly Schedule
+          </h2>
           <div className="space-y-3">
             {DAYS_OF_WEEK.map((day) => (
               <DayCard
@@ -132,14 +177,23 @@ const Index = () => {
               />
             ))}
           </div>
+          {noScheduleError && (
+            <p className="text-sm text-destructive font-medium mt-2">{noScheduleError}</p>
+          )}
         </div>
 
         {globalError && (
           <p className="text-sm text-destructive font-medium">{globalError}</p>
         )}
 
-        <Button onClick={handleSubmit} className="w-full" size="lg">
-          Submit Weekly Schedule
+        {submitError && (
+          <div className="bg-destructive/10 border border-destructive rounded-lg p-4">
+            <p className="text-sm text-destructive font-medium">{submitError}</p>
+          </div>
+        )}
+
+        <Button onClick={handleSubmit} className="w-full" size="lg" disabled={submitting}>
+          {submitting ? "Submitting…" : "Submit Weekly Schedule"}
         </Button>
       </main>
     </div>
