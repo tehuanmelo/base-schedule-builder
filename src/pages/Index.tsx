@@ -1,18 +1,17 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import CoachBaseForm from "@/components/CoachBaseForm";
 import DayCard from "@/components/DayCard";
-import SubmissionPreview from "@/components/SubmissionPreview";
 import { Button } from "@/components/ui/button";
+import { saveSubmission } from "@/lib/submissionStorage";
 import {
   COACHES,
   DAYS_OF_WEEK,
   DayOfWeek,
   DaySchedule,
-  DAY_LABELS,
   SchedulePayload,
 } from "@/data/scheduleData";
-import { CheckCircle } from "lucide-react";
 
 const createEmptySchedule = (): Record<DayOfWeek, DaySchedule> => {
   const s = {} as Record<DayOfWeek, DaySchedule>;
@@ -23,17 +22,15 @@ const createEmptySchedule = (): Record<DayOfWeek, DaySchedule> => {
 };
 
 const Index = () => {
+  const navigate = useNavigate();
   const [selectedCoach, setSelectedCoach] = useState("");
   const [selectedBase, setSelectedBase] = useState("");
   const [schedule, setSchedule] = useState<Record<DayOfWeek, DaySchedule>>(createEmptySchedule);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [globalError, setGlobalError] = useState("");
-  const [lastSubmitted, setLastSubmitted] = useState<SchedulePayload | null>(null);
-  const [showSuccess, setShowSuccess] = useState(false);
 
   const updateDay = useCallback((day: DayOfWeek, daySchedule: DaySchedule) => {
     setSchedule((prev) => ({ ...prev, [day]: daySchedule }));
-    // Clear errors for this day on edit
     setErrors((prev) => {
       const next = { ...prev };
       delete next[day];
@@ -98,16 +95,9 @@ const Index = () => {
     };
 
     console.log(payload);
-    setLastSubmitted(payload);
-    setShowSuccess(true);
+    saveSubmission(payload);
+    navigate("/success");
   };
-
-  useEffect(() => {
-    if (showSuccess) {
-      const timer = setTimeout(() => setShowSuccess(false), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [showSuccess]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -151,17 +141,6 @@ const Index = () => {
         <Button onClick={handleSubmit} className="w-full" size="lg">
           Submit Weekly Schedule
         </Button>
-
-        {showSuccess && (
-          <div className="flex items-center gap-2 bg-success/10 border border-success/30 rounded-lg p-3">
-            <CheckCircle className="h-5 w-5 text-success" />
-            <span className="text-sm font-medium text-success">
-              Submission Completed
-            </span>
-          </div>
-        )}
-
-        {lastSubmitted && <SubmissionPreview payload={lastSubmitted} />}
       </main>
     </div>
   );
