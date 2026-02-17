@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import CoachBaseForm from "@/components/CoachBaseForm";
 import DayCard from "@/components/DayCard";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { saveSubmission } from "@/lib/submissionStorage";
 import {
   COACHES,
@@ -12,6 +13,27 @@ import {
   DaySchedule,
   SchedulePayload,
 } from "@/data/scheduleData";
+
+interface DebugInfo {
+  url: string;
+  method: string;
+  contentType: string;
+  bodyLength: number;
+  responseStatus?: number;
+  responseText?: string;
+  error?: string;
+}
+
+const maskUrl = (url: string): string => {
+  try {
+    const u = new URL(url);
+    const path = u.pathname;
+    const last8 = path.slice(-8);
+    return `${u.hostname}/...${last8}`;
+  } catch {
+    return url.length > 20 ? `${url.slice(0, 12)}...${url.slice(-8)}` : url;
+  }
+};
 
 const createEmptySchedule = (): Record<DayOfWeek, DaySchedule> => {
   const s = {} as Record<DayOfWeek, DaySchedule>;
@@ -31,6 +53,7 @@ const Index = () => {
   const [noScheduleError, setNoScheduleError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
 
   const updateDay = useCallback((day: DayOfWeek, daySchedule: DaySchedule) => {
     setSchedule((prev) => ({ ...prev, [day]: daySchedule }));
@@ -108,34 +131,62 @@ const Index = () => {
       submittedAt: new Date().toISOString(),
     };
 
-    console.log(payload);
+    const payloadText = JSON.stringify(payload);
+    console.log("Payload:", payload);
+
     setSubmitting(true);
     setSubmitError("");
+    setDebugInfo(null);
 
     const url = import.meta.env.VITE_APPSCRIPT_URL;
 
     if (!url) {
       // Test mode: no URL configured
+      setDebugInfo({
+        url: "(no URL configured — test mode)",
+        method: "POST",
+        contentType: "text/plain;charset=utf-8",
+        bodyLength: payloadText.length,
+        responseStatus: 200,
+        responseText: "Test mode — no request sent",
+      });
       saveSubmission(payload);
       setSubmitting(false);
       navigate("/success");
       return;
     }
 
+    const debug: DebugInfo = {
+      url: maskUrl(url),
+      method: "POST",
+      contentType: "text/plain;charset=utf-8",
+      bodyLength: payloadText.length,
+    };
+
     try {
       const res = await fetch(url, {
         method: "POST",
+        mode: "cors",
+        redirect: "follow",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload),
+        body: payloadText,
       });
 
+      const resText = await res.text();
+      debug.responseStatus = res.status;
+      debug.responseText = resText.length > 500 ? resText.slice(0, 500) + "…" : resText;
+      setDebugInfo(debug);
+
       if (!res.ok) {
-        throw new Error("Response not OK");
+        throw new Error(`Response not OK (${res.status})`);
       }
 
       saveSubmission(payload);
       navigate("/success");
-    } catch {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      debug.error = message;
+      setDebugInfo(debug);
       setSubmitError("Submission failed. Please try again.");
     } finally {
       setSubmitting(false);
@@ -195,6 +246,31 @@ const Index = () => {
         <Button onClick={handleSubmit} className="w-full" size="lg" disabled={submitting}>
           {submitting ? "Submitting…" : "Submit Weekly Schedule"}
         </Button>
+
+        {debugInfo && (
+          <Collapsible>
+            <CollapsibleTrigger className="text-xs text-muted-foreground underline cursor-pointer">
+              Debug Info
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-2 rounded-lg border border-border bg-muted/50 p-3 text-xs font-mono space-y-1">
+                <p><span className="font-semibold">URL:</span> {debugInfo.url}</p>
+                <p><span className="font-semibold">Method:</span> {debugInfo.method}</p>
+                <p><span className="font-semibold">Content-Type:</span> {debugInfo.contentType}</p>
+                <p><span className="font-semibold">Body length:</span> {debugInfo.bodyLength}</p>
+                {debugInfo.responseStatus !== undefined && (
+                  <p><span className="font-semibold">Response status:</span> {debugInfo.responseStatus}</p>
+                )}
+                {debugInfo.responseText !== undefined && (
+                  <p><span className="font-semibold">Response text:</span> {debugInfo.responseText}</p>
+                )}
+                {debugInfo.error && (
+                  <p className="text-destructive"><span className="font-semibold">Error:</span> {debugInfo.error}</p>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </main>
     </div>
   );
